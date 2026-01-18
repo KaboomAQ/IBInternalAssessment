@@ -1,0 +1,42 @@
+import tkinter as tk
+from tkinter import messagebox
+import account
+
+def signup():
+    account.init_db()
+
+    root = tk.Tk()
+    root.title("Sign Up")
+    root.geometry("400x250")
+
+    tk.Label(root, text="Create Username").pack(pady=10)
+    username = tk.Entry(root)
+    username.pack()
+
+    tk.Label(root, text="Create Password").pack(pady=10)
+    password = tk.Entry(root, show="*")
+    password.pack()
+
+    def register():
+        name = username.get().strip()
+        pwd = password.get().strip()
+
+        if not name or not pwd:
+            messagebox.showwarning("Error", "Please fill all fields")
+            return
+
+        try:
+            account.insert_user(name, pwd)
+            messagebox.showinfo("Success", "Account created successfully!")
+            root.destroy()
+            import window_login
+            window_login.login_screen()
+        except Exception as e:
+            messagebox.showerror("Error", f"Username already exists or invalid.\n{e}")
+
+    tk.Button(root, text="Sign Up", command=register).pack(pady=20)
+    root.mainloop()
+
+if __name__ == "__main__":
+    signup()
+    
