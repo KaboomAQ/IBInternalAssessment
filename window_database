@@ -1,0 +1,66 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+import database as db  # usamos el archivo db.py
+import sqlite3
+
+def main():
+    db.init_db()
+
+    root = tk.Tk()
+    root.geometry("1080x720")
+    root.title("Incomax")
+
+    item_var, cost_var, qty_var = tk.StringVar(), tk.StringVar(), tk.StringVar()
+    tree = ttk.Treeview(root, columns=("id","item","cost","qty"), show="headings")
+    tree.heading("id", text="ID"); tree.heading("item", text="Kind of income")
+    tree.heading("cost", text="Monetary value"); tree.heading("qty", text="Quantity")
+    rows = db.fetch_all()
+    for r in rows: tree.insert("", "end", values=r)
+    tree.pack(fill="both", expand=True, padx=10, pady=10)
+
+    def on_submit():
+        hey = tk.Toplevel()
+        hey.geometry("540x320")
+        hey.title("Create a row")
+        tk.Label(hey, text="Kind of income").place(x=50, y=50)
+        tk.Label(hey, text="Monetary Value").place(x=50, y=100)
+        tk.Label(hey, text="Quantity").place(x=50, y=150)
+        tk.Entry(hey, textvariable=item_var).place(x=250, y=50,  width=200)
+        tk.Entry(hey, textvariable=cost_var).place(x=250, y=100, width=200)
+        tk.Entry(hey, textvariable=qty_var).place(x=250, y=150, width=200)
+        def insert_row(item, cost, qty):
+            conn = sqlite3.connect("database.db")
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO items (item, cost, qty) VALUES (?, ?, ?)",
+                (item, cost, qty)
+            )
+            conn.commit()
+            new_id = cursor.lastrowid
+            conn.close()
+            return new_id
+        def submit():
+            try:
+                item = item_var.get().strip()
+                cost = int(cost_var.get())
+                qty  = int(qty_var.get())
+                db.insert_row(item, cost, qty)
+                messagebox.showinfo("Éxito", "Datos guardados.")
+                item_var.set(""); cost_var.set(""); qty_var.set("")
+                new_id = db.insert_row(item, cost, qty)
+                tree.insert("", "end", values=(new_id, item, cost, qty))
+            except ValueError:
+                messagebox.showwarning("Error", "Monetary Value y Quantity deben ser números.")
+            except Exception as e:
+                messagebox.showerror("Error", f"{e}")
+        tk.Button(hey, text="Submit",command=submit).place(x=100, y=250, width=100)
+    
+    tk.Button(root, text="Create Row", command=on_submit).place(x=50, y=600, width=200)
+    tk.Button(root, text="Delete Row").place(x=350, y=600, width=200)
+    tk.Button(root, text="Process Information").place(x=650, y=600, width=200)
+
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
+ 
