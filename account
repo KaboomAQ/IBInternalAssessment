@@ -1,0 +1,52 @@
+import sqlite3
+from pathlib import Path
+
+DB_PATH = Path(__file__).with_name("account.db")
+
+def createDB():
+        conn = sqlite3.connect(DB_PATH)
+        conn.commit()
+        conn.close()
+
+def _conn():
+    return sqlite3.connect(DB_PATH)
+
+def init_db():
+    with _conn() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS acc (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                password TEXT NOT NULL
+            )
+        """)
+
+def insert_user(name, password):
+    with _conn() as conn:
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO acc (name, password) VALUES (?, ?)", (name, password))
+        conn.commit()
+
+def check_user(name, password):
+    with _conn() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM acc WHERE name = ? AND password = ?", (name, password))
+        result = cursor.fetchone()
+        return result is not None
+
+def fetch_all():
+    with _conn() as conn:
+        cur = conn.execute(
+            "SELECT id, name, password FROM acc ORDER BY id DESC"
+        )
+        return cur.fetchall()
+
+def delete_row(row_id):
+    with _conn() as conn:
+        conn.execute("DELETE FROM acc WHERE id = ?", (row_id,))
+
+with _conn() as conn:
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(acc);")
+    print(cursor.fetchall())
+
