@@ -1,0 +1,41 @@
+import sqlite3
+from pathlib import Path
+
+DB_PATH = Path(__file__).with_name("database.db")
+
+def createDB():
+        conn = sqlite3.connect(DB_PATH)
+        conn.commit()
+        conn.close()
+
+def _conn():
+    return sqlite3.connect(DB_PATH)
+
+def init_db():
+    with _conn() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS income (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item TEXT NOT NULL,
+                cost INTEGER NOT NULL,
+                quantity INTEGER NOT NULL
+            )
+        """)
+
+def insert_row(item, cost, quantity):
+    with _conn() as conn:
+        conn.execute(
+            "INSERT INTO income (item, cost, quantity) VALUES (?, ?, ?)",
+            (item, cost, quantity)
+        )
+
+def fetch_all():
+    with _conn() as conn:
+        cur = conn.execute(
+            "SELECT id, item, cost, quantity FROM income ORDER BY id DESC"
+        )
+        return cur.fetchall()
+
+def delete_row(row_id):
+    with _conn() as conn:
+        conn.execute("DELETE FROM income WHERE id = ?", (row_id,))
