@@ -1,19 +1,20 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
-import database as db  # usamos el archivo db.py
+import database as db
 import sqlite3
 
 def main():
     db.init_db()
 
+    list = ["Expenses","Savings","Investment","Life quality"]
     root = tk.Tk()
     root.geometry("1080x720")
     root.title("Incomax")
 
-    item_var, cost_var, qty_var = tk.StringVar(), tk.StringVar(), tk.StringVar()
-    tree = ttk.Treeview(root, columns=("id","item","cost","qty"), show="headings")
-    tree.heading("id", text="ID"); tree.heading("item", text="Kind of income")
-    tree.heading("cost", text="Monetary value"); tree.heading("qty", text="Quantity")
+    item_var, cost_var = tk.StringVar(), tk.StringVar()
+    tree = ttk.Treeview(root, columns=("id","item","cost"), show="headings")
+    tree.heading("id", text="ID"); tree.heading("item", text="Income spending type")
+    tree.heading("cost", text="Monetary value")
     rows = db.fetch_all()
     for r in rows: tree.insert("", "end", values=r)
     tree.pack(fill="both", expand=True, padx=10, pady=10)
@@ -22,18 +23,16 @@ def main():
         hey = tk.Toplevel()
         hey.geometry("540x320")
         hey.title("Create a row")
-        tk.Label(hey, text="Kind of income").place(x=50, y=50)
-        tk.Label(hey, text="Monetary Value").place(x=50, y=100)
-        tk.Label(hey, text="Quantity").place(x=50, y=150)
-        tk.Entry(hey, textvariable=item_var).place(x=250, y=50,  width=200)
-        tk.Entry(hey, textvariable=cost_var).place(x=250, y=100, width=200)
-        tk.Entry(hey, textvariable=qty_var).place(x=250, y=150, width=200)
-        def insert_row(item, cost, qty):
+        tk.Label(hey, text="Monetary Value").place(x=50, y=50)
+        tk.Label(hey, text="Where to spend your income?").place(x=50, y=100)
+        tk.Entry(hey, textvariable=cost_var).place(x=250, y=50,  width=200)
+        tk.combo_box = ttk.Combobox(hey,textvariable=item_var,value=list,state="readonly").place(x=250, y=100, width=200)
+        def insert_row(item, cost):
             conn = sqlite3.connect("database.db")
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO items (item, cost, qty) VALUES (?, ?, ?)",
-                (item, cost, qty)
+                "INSERT INTO items (item, cost) VALUES (?, ?)",
+                (item, cost)
             )
             conn.commit()
             new_id = cursor.lastrowid
@@ -43,21 +42,70 @@ def main():
             try:
                 item = item_var.get().strip()
                 cost = int(cost_var.get())
-                qty  = int(qty_var.get())
-                db.insert_row(item, cost, qty)
                 messagebox.showinfo("Éxito", "Datos guardados.")
-                item_var.set(""); cost_var.set(""); qty_var.set("")
-                new_id = db.insert_row(item, cost, qty)
-                tree.insert("", "end", values=(new_id, item, cost, qty))
+                item_var.set(""); cost_var.set("")
+                new_id = db.insert_row(item, cost)
+                tree.insert("", "end", values=(new_id, item, cost))
             except ValueError:
-                messagebox.showwarning("Error", "Monetary Value y Quantity deben ser números.")
+                messagebox.showwarning("Error", "Monetary Value debe ser números.")
             except Exception as e:
                 messagebox.showerror("Error", f"{e}")
         tk.Button(hey, text="Submit",command=submit).place(x=100, y=250, width=100)
     
-    tk.Button(root, text="Create Row", command=on_submit).place(x=50, y=600, width=200)
-    tk.Button(root, text="Delete Row").place(x=350, y=600, width=200)
-    tk.Button(root, text="Process Information").place(x=650, y=600, width=200)
+    def delete_selected_row():
+        selected = tree.selection()
+        if not selected:
+            messagebox.showwarning("Error", "Selecciona una fila")
+            return
+
+        row = selected[0]
+        row_id = tree.item(row, "values")[0]
+
+        if messagebox.askyesno("Confirmar", "¿Borrar fila?"):
+            db.delete_row(row_id)
+            tree.delete(row)
+
+    def about():
+        g = tk.Toplevel()
+        g.geometry("600x400")
+        g.title("About")
+        tk.Label(g, text="Hello! Welcome to Incomax! The place where you will be able to manage your income!").place(x=50, y=50)
+        tk.Label(g, text="For doing that, you will have to use 70% of your total income in expenses").place(x=50, y=100)
+        tk.Label(g, text="The other 30% will be used in the following:").place(x=50, y=125)
+        tk.Label(g, text="10% for savings").place(x=50, y=150)
+        tk.Label(g, text="10% for investment").place(x=50, y=175)
+        tk.Label(g, text="10% for life quality").place(x=50, y=200)
+        tk.Label(g, text="Make sure you follow this percentages when you put your data").place(x=50, y=250)
+        tk.Label(g, text="If there is something wrong, you will have to adjust how you spend your money").place(x=50, y=275)
+        tk.Label(g, text="Have a good one!").place(x=50, y=325)
+
+    def process_information():
+        pro = tk.Toplevel()
+        pro.geometry("540x320")
+        pro.title("Information processing")
+        conn = sqlite3.connect("database.db")
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT SUM(cost) FROM income;"
+        )
+        result = cursor.fetchone()[0]
+        a = {result*0.1}
+        b = {result*0.7}
+        tk.Label(pro, text=f"Total cost: ${result}").place(x=50, y=50)
+        tk.Label(pro, text=f"70% of cost: ${result*0.7:.2f}").place(x=50, y=75)
+        tk.Label(pro, text=f"30% of cost: ${result*0.3:.2f}").place(x=50, y=100)
+        cursor.execute(
+            "SELECT item, SUM(cost) FROM income GROUP BY item;"
+        )
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+
+    tk.Button(root, text="Create Row", command=on_submit).place(x=50, y=600, width=150)
+    tk.Button(root, text="Delete Row", command=delete_selected_row).place(x=250, y=600, width=150)
+    tk.Button(root, text="Process Information", command=process_information).place(x=450, y=600, width=150)
+    tk.Button(root, text="About", command=about).place(x=650, y=600, width=150)
 
     root.mainloop()
 
